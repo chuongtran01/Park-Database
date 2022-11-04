@@ -247,3 +247,13 @@
 /Users/chuongtran/Projects/amusement_park/amusement_park/obj/Release/net6.0/amusement_park.pdb
 /Users/chuongtran/Projects/amusement_park/amusement_park/obj/Release/net6.0/amusement_park.genruntimeconfig.cache
 /Users/chuongtran/Projects/amusement_park/amusement_park/obj/Release/net6.0/ref/amusement_park.dll
+/Users/chuongtran/Projects/amusement_park/amusement_park/bin/Release/net6.0/Google.Protobuf.dll
+/Users/chuongtran/Projects/amusement_park/amusement_park/bin/Release/net6.0/K4os.Compression.LZ4.dll
+/Users/chuongtran/Projects/amusement_park/amusement_park/bin/Release/net6.0/K4os.Compression.LZ4.Streams.dll
+/Users/chuongtran/Projects/amusement_park/amusement_park/bin/Release/net6.0/K4os.Hash.xxHash.dll
+/Users/chuongtran/Projects/amusement_park/amusement_park/bin/Release/net6.0/Microsoft.AspNetCore.JsonPatch.dll
+/Users/chuongtran/Projects/amusement_park/amusement_park/bin/Release/net6.0/Microsoft.AspNetCore.Mvc.NewtonsoftJson.dll
+/Users/chuongtran/Projects/amusement_park/amusement_park/bin/Release/net6.0/MySql.Data.dll
+/Users/chuongtran/Projects/amusement_park/amusement_park/bin/Release/net6.0/ZstdNet.dll
+/Users/chuongtran/Projects/amusement_park/amusement_park/bin/Release/net6.0/Newtonsoft.Json.Bson.dll
+/Users/chuongtran/Projects/amusement_park/amusement_park/bin/Release/net6.0/BouncyCastle.Crypto.dll

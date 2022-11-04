@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MySql.Data.MySqlClient;
 using Newtonsoft.Json.Linq;
 
 namespace amusement_park.Controllers
@@ -10,10 +12,38 @@ namespace amusement_park.Controllers
     public class CustomerController : ControllerBase
     {
         private readonly DataContext _context;
+        private readonly IConfiguration _configuration;
 
-        public CustomerController(DataContext context)
+        public CustomerController(DataContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
+        }
+
+        [Route("test")]
+        [HttpGet]
+        public JsonResult Get()
+        {
+            string query = @"select * from customer";
+
+            DataTable table = new DataTable();
+            string sqlDataSource = _configuration.GetConnectionString("DefaultConnection");
+            MySqlDataReader myReader;
+            using (MySqlConnection mycon = new MySqlConnection(sqlDataSource))
+            {
+                mycon.Open();
+                using (MySqlCommand myCommand = new MySqlCommand(query, mycon))
+                {
+                    myReader = myCommand.ExecuteReader();
+                    table.Load(myReader);
+
+                    myReader.Close();
+                    mycon.Close();
+                }
+            }
+
+            return new JsonResult(table);
+
         }
 
 
@@ -67,14 +97,14 @@ namespace amusement_park.Controllers
             _context.customer.Add(createdCustomer);
             await _context.SaveChangesAsync();
 
-            return Ok(newCustomer);
+            return Ok(createdCustomer);
         }
 
         [Route("signin")]
         [HttpPost]
         public async Task<ActionResult<Customer>> CustomerSignIn(CustomerLogin request)
         {
-            var temp = await _context.customer.Where(h => h.email == request.email).FirstOrDefaultAsync();
+            var temp = await _context.customer.Where(h => h.email == request.email && h.password == request.password).FirstOrDefaultAsync();
 
             if (temp == null)
             {
@@ -83,6 +113,7 @@ namespace amusement_park.Controllers
 
             return Ok(temp);
         }
+
 
         [HttpPut]
         public async Task<ActionResult<List<Customer>>> ModifyCustomer(Customer request)
