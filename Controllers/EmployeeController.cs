@@ -1,6 +1,10 @@
 ﻿using System;
+using System.Data;
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MySql.Data.MySqlClient;
+using Newtonsoft.Json.Linq;
 using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace amusement_park.Controllers
@@ -10,33 +14,113 @@ namespace amusement_park.Controllers
     public class EmployeeController : ControllerBase
     {
         private readonly DataContext _context;
+        private readonly IConfiguration _configuration;
 
-        public EmployeeController(DataContext context)
+        public EmployeeController(DataContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
+        }
+
+        [Route("role/{title}")]
+        [HttpGet]
+        public async Task<ActionResult> GetByRole(string title)
+        {
+            string query = @"select * from amusement_park.employee where job_title=(@role)";
+
+            DataTable table = new DataTable();
+            string sqlDataSource = _configuration.GetConnectionString("DefaultConnection");
+            MySqlDataReader myReader;
+            using (MySqlConnection mycon = new MySqlConnection(sqlDataSource))
+            {
+                mycon.Open();
+                using (MySqlCommand myCommand = new MySqlCommand(query, mycon))
+                {
+                    myCommand.Parameters.AddWithValue("@role", title);
+                    myReader = myCommand.ExecuteReader();
+
+                    if (myReader.HasRows)
+                    {
+                        table.Load(myReader);
+                    }
+                    else
+                    {
+                        return BadRequest("No employee exist.");
+                    }
+                    
+
+                    myReader.Close();
+                    mycon.Close();
+                }
+            }
+
+            return Ok(table);
         }
 
 
         [HttpGet]
-        public async Task<ActionResult<List<Employee>>> Get()
+        public JsonResult Get()
         {
-            return Ok(await _context.employee.ToListAsync());
+            string query = @"select * from amusement_park.employee";
+
+            DataTable table = new DataTable();
+            string sqlDataSource = _configuration.GetConnectionString("DefaultConnection");
+            MySqlDataReader myReader;
+            using (MySqlConnection mycon = new MySqlConnection(sqlDataSource))
+            {
+                mycon.Open();
+                using (MySqlCommand myCommand = new MySqlCommand(query, mycon))
+                {
+                    myReader = myCommand.ExecuteReader();
+                    table.Load(myReader);
+
+                    myReader.Close();
+                    mycon.Close();
+                }
+            }
+
+            return new JsonResult(table);
+
         }
 
         [Route("signin")]
         [HttpPost]
-        public async Task<ActionResult<Employee>> EmployeeLogin(EmployeeLogin request)
+        public async Task<ActionResult> EmployeeLogin(EmployeeLogin request)
         {
+            string query = @"SELECT * FROM amusement_park.employee
+                             WHERE username = @username AND password = @password";
 
-            var temp = await _context.employee.Where(h => h.username == request.username && h.password == request.password).FirstOrDefaultAsync();
-
-            if (temp == null)
+            DataTable table = new DataTable();
+            string sqlDataSource = _configuration.GetConnectionString("DefaultConnection");
+            MySqlDataReader myReader;
+            using (MySqlConnection mycon = new MySqlConnection(sqlDataSource))
             {
-                return BadRequest("Email not existed or password is incorrect.");
+                mycon.Open();
+                using (MySqlCommand myCommand = new MySqlCommand(query, mycon))
+                {
+                    myCommand.Parameters.AddWithValue("@username", request.username);
+                    myCommand.Parameters.AddWithValue("@password", request.password);
+
+                    myReader = myCommand.ExecuteReader();
+
+                    if (myReader.HasRows)
+                    {
+                        table.Load(myReader);
+                    }
+                    else
+                    {
+                        return BadRequest("Email or password is incorrect.");
+                    }
+                    
+
+                    myReader.Close();
+                    mycon.Close();
+                }
             }
 
-            return Ok(temp);
+            return Ok(table);
         }
+
 
         [Route("position")]
         [HttpGet]
@@ -45,61 +129,114 @@ namespace amusement_park.Controllers
             return Ok("Updated!");
         }
 
+
         [Route("{id}")]
         [HttpDelete]
-        public async Task<ActionResult<Employee>> EmployeeDelete(int id)
+        public JsonResult EmployeeDelete(int id)
         {
+            string query = @"DELETE FROM employee
+                             WHERE employee_id = @id ";
 
-            var existed = await _context.employee.Where(h => h.employee_id == id).FirstOrDefaultAsync();
-
-            if (existed == null)
+            DataTable table = new DataTable();
+            string sqlDataSource = _configuration.GetConnectionString("DefaultConnection");
+            MySqlDataReader myReader;
+            using (MySqlConnection mycon = new MySqlConnection(sqlDataSource))
             {
-                return BadRequest("Employee not existed");
+                mycon.Open();
+                using (MySqlCommand myCommand = new MySqlCommand(query, mycon))
+                {
+                    myCommand.Parameters.AddWithValue("@id", id);
+
+                    myReader = myCommand.ExecuteReader();
+                    table.Load(myReader);
+
+                    myReader.Close();
+                    mycon.Close();
+                }
             }
 
-            _context.employee.Remove(existed);
-            await _context.SaveChangesAsync();
+            return new JsonResult(Get());
 
-            return Ok("Successfully deleted");
         }
+
 
         [Route("update")]
         [HttpPost]
-        public async Task<ActionResult<List<Employee>>> UpdateEmployee(EmployeeUpdate request)
+        public JsonResult UpdateEmployee(EmployeeUpdate request)
         {
             int id = Convert.ToInt32(request.employee_id);
-            var existed = await _context.employee.Where(h => h.employee_id == id).FirstOrDefaultAsync();
+            int sup_id = Convert.ToInt32(request.newSupervisorID);
+            DateTime DOB = DateTime.Parse(request.newDOB);
 
-            if (existed == null)
+            string query = @"UPDATE employee
+                             SET username = @username, fname = @fname, lname = @lname, DOB = @DOB, supervisor_id = @sup_id, job_title = @job_title 
+                             WHERE employee_id = @id ";
+
+            DataTable table = new DataTable();
+            string sqlDataSource = _configuration.GetConnectionString("DefaultConnection");
+            MySqlDataReader myReader;
+            using (MySqlConnection mycon = new MySqlConnection(sqlDataSource))
             {
-                return BadRequest("Employee not existed!");
+                mycon.Open();
+                using (MySqlCommand myCommand = new MySqlCommand(query, mycon))
+                {
+                    myCommand.Parameters.AddWithValue("@id", id);
+                    myCommand.Parameters.AddWithValue("@username", request.newUsername);
+                    myCommand.Parameters.AddWithValue("@fname", request.newFirstName);
+                    myCommand.Parameters.AddWithValue("@lname", request.newLastName);
+                    myCommand.Parameters.AddWithValue("@DOB", DOB);
+                    myCommand.Parameters.AddWithValue("@sup_id", sup_id);
+                    myCommand.Parameters.AddWithValue("@job_title", request.newJobTitle);
+
+
+                    myReader = myCommand.ExecuteReader();
+                    table.Load(myReader);
+
+                    myReader.Close();
+                    mycon.Close();
+                }
             }
 
-            existed.username = request.newUsername;
-            await _context.SaveChangesAsync();
+            return new JsonResult(Get());
 
-            return Ok(existed);
         }
+
 
         [HttpPost]
-        public async Task<ActionResult<List<Employee>>> AddEmployee(Employee newEmployee)
+        public JsonResult AddEmployee(EmployeeAdd newEmployee)
         {
-            var oldEmployee = await _context.employee.Where(h => h.username == newEmployee.username).FirstOrDefaultAsync();
+            DateTime dob = DateTime.Parse(newEmployee.DOB);
+            string query = @"INSERT INTO employee(fname, lname, DOB, supervisor_id, job_title, username, password)
+                             VALUES (@fname, @lname, @DOB, @supervisor_id, @job_title, @username, @password)";
 
-            if (oldEmployee != null)
+            DataTable table = new DataTable();
+            string sqlDataSource = _configuration.GetConnectionString("DefaultConnection");
+            MySqlDataReader myReader;
+            using (MySqlConnection mycon = new MySqlConnection(sqlDataSource))
             {
-                return BadRequest("Duplicate Email");
+                mycon.Open();
+                using (MySqlCommand myCommand = new MySqlCommand(query, mycon))
+                {
+                    myCommand.Parameters.AddWithValue("@fname", newEmployee.fname);
+                    myCommand.Parameters.AddWithValue("@lname", newEmployee.lname);
+                    myCommand.Parameters.AddWithValue("@DOB", dob);
+                    myCommand.Parameters.AddWithValue("@supervisor_id", newEmployee.supervisor_id);
+                    myCommand.Parameters.AddWithValue("@job_title", newEmployee.job_title);
+                    myCommand.Parameters.AddWithValue("@username", newEmployee.username);
+                    myCommand.Parameters.AddWithValue("@password", newEmployee.password);
+
+                    myReader = myCommand.ExecuteReader();
+                    table.Load(myReader);
+
+                    myReader.Close();
+                    mycon.Close();
+                }
             }
 
-            Convert.ToInt32(newEmployee.employee_id);
-            Convert.ToInt32(newEmployee.supervisor_id);
+            return new JsonResult(Get());
 
-            _context.employee.Add(newEmployee);
-            await _context.SaveChangesAsync();
-
-
-            return Ok(newEmployee);
         }
+
 
         
     }

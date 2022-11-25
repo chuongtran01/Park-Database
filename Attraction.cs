@@ -14,6 +14,11 @@ namespace amusement_park
         public DateTime start_time { get; set; }
         public DateTime end_time { get; set; }
         public int breakdown_nums { get; set; }
+
+        public Attraction()
+        {
+
+        }
     }
 }
 

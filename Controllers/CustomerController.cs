@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MySql.Data.MySqlClient;
@@ -20,9 +21,8 @@ namespace amusement_park.Controllers
             _configuration = configuration;
         }
 
-        [Route("test")]
         [HttpGet]
-        public JsonResult Get()
+        public async Task<ActionResult> GetCustomers()
         {
             string query = @"select * from customer";
 
@@ -35,36 +35,59 @@ namespace amusement_park.Controllers
                 using (MySqlCommand myCommand = new MySqlCommand(query, mycon))
                 {
                     myReader = myCommand.ExecuteReader();
-                    table.Load(myReader);
+
+                    if (myReader.HasRows)
+                    {
+                        table.Load(myReader);
+                    }
+                    else
+                    {
+                        return BadRequest("No Customer.");
+                    }
 
                     myReader.Close();
                     mycon.Close();
                 }
             }
 
-            return new JsonResult(table);
+            return Ok(table);
 
         }
 
-
+        [Route("{id}")]
         [HttpGet]
-        public async Task<ActionResult<List<Customer>>> GetCustomers()
+        public async Task<ActionResult> GetCustomer2(int id)
         {
-            return Ok(await _context.customer.ToListAsync());
-        }
+            string query = @"SELECT * FROM customer
+                             WHERE customer_id = @id";
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<List<Customer>>> GetCustomer(int id)
-        {
-            var temp = await _context.customer.Where(h => h.customer_id == id).FirstOrDefaultAsync();
-
-            if (temp == null)
+            DataTable table = new DataTable();
+            string sqlDataSource = _configuration.GetConnectionString("DefaultConnection");
+            MySqlDataReader myReader;
+            using (MySqlConnection mycon = new MySqlConnection(sqlDataSource))
             {
-                return BadRequest("Customer not existed!");
+                mycon.Open();
+                using (MySqlCommand myCommand = new MySqlCommand(query, mycon))
+                {
+                    myCommand.Parameters.AddWithValue("@id", id);
+
+                    myReader = myCommand.ExecuteReader();
+
+                    if (myReader.HasRows)
+                    {
+                        table.Load(myReader);
+                    }
+                    else
+                    {
+                        return BadRequest("Customer doesn't exist.");
+                    }
+
+                    myReader.Close();
+                    mycon.Close();
+                }
             }
 
-
-            return Ok(temp.email);
+            return Ok(table);
         }
 
 
@@ -72,46 +95,77 @@ namespace amusement_park.Controllers
         [HttpPost]
         public async Task<ActionResult<Customer>> CustomerSignUp(CustomerSignUp newCustomer)
         {
-            var oldCustomer = await _context.customer.Where(h => h.email == newCustomer.email).FirstOrDefaultAsync();
-
-            if (oldCustomer != null)
-            {
-                return BadRequest("Duplicate Email");
-            }
+            DateTime dob = DateTime.Parse(newCustomer.dob);
 
             string[] chars = newCustomer.height.Split("'");
-
             double newHeight = Convert.ToDouble(chars[0]) + (Convert.ToDouble(chars[1]) / 12);
 
-            var createdCustomer = new Customer
+            string query = @"INSERT INTO customer(fname, lname, email, password, height, DOB, tickets_bought)
+                             VALUES (@fname, @lname, @email, @password, @height, @DOB, @tickets_bought)";
+
+            DataTable table = new DataTable();
+            string sqlDataSource = _configuration.GetConnectionString("DefaultConnection");
+            MySqlDataReader myReader;
+            using (MySqlConnection mycon = new MySqlConnection(sqlDataSource))
             {
-                fname = newCustomer.fname,
-                lname = newCustomer.lname,
-                email = newCustomer.email,
-                password = newCustomer.password,
-                height = newHeight,
-                tickets_bought = 0,
-                DOB = new DateTime(2001, 12, 12)
-            };
+                mycon.Open();
+                using (MySqlCommand myCommand = new MySqlCommand(query, mycon))
+                {
+                    myCommand.Parameters.AddWithValue("@fname", newCustomer.fname);
+                    myCommand.Parameters.AddWithValue("@lname", newCustomer.lname);
+                    myCommand.Parameters.AddWithValue("@email", newCustomer.email);
+                    myCommand.Parameters.AddWithValue("@password", newCustomer.password);
+                    myCommand.Parameters.AddWithValue("@height", newHeight);
+                    myCommand.Parameters.AddWithValue("@DOB", dob);
+                    myCommand.Parameters.AddWithValue("@tickets_bought", 0);
 
-            _context.customer.Add(createdCustomer);
-            await _context.SaveChangesAsync();
+                    myReader = myCommand.ExecuteReader();
+                    table.Load(myReader);
 
-            return Ok(createdCustomer);
+                    myReader.Close();
+                    mycon.Close();
+                }
+            }
+
+            return new JsonResult("Successfully sign up!");
         }
 
         [Route("signin")]
         [HttpPost]
-        public async Task<ActionResult<Customer>> CustomerSignIn(CustomerLogin request)
+        public async Task<ActionResult> CustomerSignIn(CustomerLogin request)
         {
-            var temp = await _context.customer.Where(h => h.email == request.email && h.password == request.password).FirstOrDefaultAsync();
+            string query = @"SELECT * FROM customer
+                             WHERE email = @email AND password = @password";
 
-            if (temp == null)
+            DataTable table = new DataTable();
+            string sqlDataSource = _configuration.GetConnectionString("DefaultConnection");
+            MySqlDataReader myReader;
+            using (MySqlConnection mycon = new MySqlConnection(sqlDataSource))
             {
-                return BadRequest("Email not existed or password is incorrect.");
+                mycon.Open();
+                using (MySqlCommand myCommand = new MySqlCommand(query, mycon))
+                {
+                    myCommand.Parameters.AddWithValue("@email", request.email);
+                    myCommand.Parameters.AddWithValue("@password", request.password);
+
+                    myReader = myCommand.ExecuteReader();
+
+                    if (myReader.HasRows)
+                    {
+                        table.Load(myReader);
+                    }
+                    else
+                    {
+                        return BadRequest("Email or password is incorrect.");
+                    }
+
+
+                    myReader.Close();
+                    mycon.Close();
+                }
             }
 
-            return Ok(temp);
+            return Ok(table);
         }
 
 
